@@ -1,0 +1,8 @@
+[2026-05-18 23:03:11] Action: SUBMIT_ABSENCE | Changed By: user1 | Staff: Ms A. Garcia | Date: 2026-05-18 | Old Status: None | New Status: absent | Reason: No reason provided
+[2026-05-18 23:03:11] Action: SUBMIT_ABSENCE | Changed By: user1 | Staff: Ms A. Garcia | Date: 2026-05-19 | Old Status: None | New Status: absent | Reason: No reason provided
+[2026-05-18 23:58:16] Action: SUBMIT_ABSENCE | Changed By: user1 | Staff: Ms A. Garcia | Date: 2026-05-20 | Old Status: None | New Status: absent | Reason: No reason provided
+[2026-05-19 17:53:39] Action: ADMIN_MARK_ATTENDANCE | Changed By: admin1 | Staff: CHEN | Date: 2026-05-19 | Old Status: None | New Status: absent | Reason: Admin marked absent from Staff Page
+[2026-05-19 17:54:15] Action: OVERRIDE_ATTENDANCE | Changed By: admin1 | Staff: Ms A. Garcia | Date: 2026-05-20 | Old Status: absent | New Status: present | Reason: Mistake
+
+[2026-05-21 23:35:56] Action: ADMIN_MARK_ATTENDANCE | Changed By: admin1 | Staff: CHEN | Date: 2026-05-22 | Old Status: None | New Status: absent | Reason: Admin marked absent from Staff Page
+[2026-05-21 23:37:24] Action: OVERRIDE_ATTENDANCE | Changed By: admin1 | Staff: CHEN | Date: 2026-05-22 | Old Status: absent | New Status: present | Reason: mistake
