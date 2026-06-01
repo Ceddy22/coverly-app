@@ -38,6 +38,7 @@ app.add_middleware(
         "http://localhost:5174",
         "http://127.0.0.1:5174",
         "https://thirsty-ether-dissuade.ngrok-free.dev",
+        "coverly-app-kohl.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
