@@ -2,7 +2,24 @@ import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 
+const getStoredUser = () => {
+  try {
+    const storedUser = localStorage.getItem("user");
+
+    if (!storedUser) {
+      return null;
+    }
+
+    return JSON.parse(storedUser);
+  } catch (error) {
+    console.error("Invalid user data in localStorage:", error);
+    localStorage.removeItem("user");
+    return null;
+  }
+};
+
 export default function AbsentPage() {
+  const [user] = useState(getStoredUser());
   const [absences, setAbsences] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -12,27 +29,24 @@ export default function AbsentPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const API_HOST_URL = import.meta.env.VITE_API_HOST_URL;
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
   const fetchAbsences = async () => {
-    if (!user) return;
+    if (!user?.username) {
+      setError("No user is logged in.");
+      return;
+    }
 
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API_HOST_URL}/api/attendance/${user.username}`
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to load absences");
-      }
+      const response = await fetch(`/api/attendance/${user.username}`);
 
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to load absences");
+      }
+
       setAbsences(data.attendance || []);
     } catch (error) {
       console.error("Absence loading error:", error);
@@ -62,6 +76,11 @@ export default function AbsentPage() {
   const handleSubmitAbsenceRange = async (e) => {
     e.preventDefault();
 
+    if (!user?.username) {
+      setError("No user is logged in.");
+      return;
+    }
+
     if (!startDate || !endDate) {
       setError("Please select a start date and end date.");
       return;
@@ -79,7 +98,7 @@ export default function AbsentPage() {
 
       const dates = getDatesInRange(startDate, endDate);
 
-      for (const date of dates) {
+      for (const absenceDate of dates) {
         const response = await fetch(`/api/attendance`, {
           method: "POST",
           headers: {
@@ -87,20 +106,24 @@ export default function AbsentPage() {
           },
           body: JSON.stringify({
             username: user.username,
-            date: date,
+            date: absenceDate,
             status: "absent",
             reason: reason || "No reason provided",
+            submitted_by: user.username,
           }),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
+        const data = await response.json();
 
-          if (
-            errorData.detail !==
-            "Attendance already submitted for this user on this date"
-          ) {
-            throw new Error(errorData.detail || "Failed to submit absence");
+        if (!response.ok) {
+          const alreadySubmitted =
+            data.detail ===
+              "Attendance already submitted for this staff member on this date" ||
+            data.detail ===
+              "Attendance already submitted for this user on this date";
+
+          if (!alreadySubmitted) {
+            throw new Error(data.detail || "Failed to submit absence");
           }
         }
       }
@@ -130,6 +153,16 @@ export default function AbsentPage() {
       textColor: "#FFFFFF",
     }));
 
+  if (!user) {
+    return (
+      <div className="p-6 bg-[#F6FAFD] min-h-screen">
+        <p className="text-red-600">
+          No user is logged in. Please log in again.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-[#F6FAFD] min-h-screen">
       <div className="mb-6">
@@ -146,7 +179,6 @@ export default function AbsentPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* LARGE CALENDAR */}
         <div className="lg:col-span-3 bg-white p-4 rounded-xl shadow border border-[#D6EAF8]">
           <h2 className="text-xl font-bold text-[#001B3D] mb-4">
             My Absence Calendar
@@ -164,7 +196,6 @@ export default function AbsentPage() {
           </div>
         </div>
 
-        {/* RIGHT PANEL */}
         <div className="bg-white p-4 rounded-xl shadow border border-[#D6EAF8] h-fit">
           <h2 className="text-xl font-bold text-[#001B3D] mb-4">
             Absence Actions
@@ -182,7 +213,8 @@ export default function AbsentPage() {
               Recent Absences
             </h3>
 
-            {absences.length === 0 ? (
+            {absences.filter((item) => item.status === "absent").length ===
+            0 ? (
               <p className="text-gray-600 text-sm">No absences found.</p>
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
@@ -196,6 +228,7 @@ export default function AbsentPage() {
                       <p className="font-semibold text-red-700">
                         {item.date}
                       </p>
+
                       <p className="text-sm text-gray-600">
                         {item.reason || "No reason provided"}
                       </p>
@@ -207,7 +240,6 @@ export default function AbsentPage() {
         </div>
       </div>
 
-      {/* POPUP MENU */}
       {showPopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
@@ -239,9 +271,7 @@ export default function AbsentPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block font-semibold mb-2">
-                  Reason
-                </label>
+                <label className="block font-semibold mb-2">Reason</label>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
