@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { HashRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import LoginPage from "./pages/LoginPage";
 import AboutPage from "./pages/AboutPage";
@@ -15,19 +15,30 @@ import coverlyWatermarklogo from "./assets/coverly-wordmark.png";
 import notificationIcon from "./assets/notification.png";
 import bellIcon from "./assets/bell(1).png";
 
+const getStoredUser = () => {
+  try {
+    const storedUser = localStorage.getItem("user");
+
+    if (!storedUser) {
+      return null;
+    }
+
+    return JSON.parse(storedUser);
+  } catch (error) {
+    console.error("Invalid user data in localStorage:", error);
+    localStorage.removeItem("user");
+    return null;
+  }
+};
+
 export default function App() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
+  const [user, setUser] = useState(getStoredUser());
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotificationDropdown, setShowNotificationDropdown] =
     useState(false);
-
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  const API_HOST_URL = import.meta.env.VITE_API_HOST_URL;
-
-  console.log("App user state:", user);
 
   const fetchUnreadNotifications = async () => {
     if (!user?.username) return;
@@ -52,9 +63,7 @@ export default function App() {
     if (!user?.username) return;
 
     try {
-      const response = await fetch(
-        `/api/notifications/${user.username}`
-      );
+      const response = await fetch(`/api/notifications/${user.username}`);
 
       if (!response.ok) {
         throw new Error("Failed to load notifications");
@@ -80,12 +89,9 @@ export default function App() {
 
   const handleMarkNotificationRead = async (notificationId) => {
     try {
-      const response = await fetch(
-        `/api/notifications/${notificationId}/read`,
-        {
-          method: "PUT",
-        }
-      );
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: "PUT",
+      });
 
       if (!response.ok) {
         throw new Error("Failed to mark notification as read");
@@ -133,11 +139,11 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem("user");
     setUser(null);
-    window.location.href = "/login";
+    window.location.href = "/#/login";
   };
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="flex min-h-screen bg-gray-100">
         {user && (
           <aside
@@ -357,6 +363,8 @@ export default function App() {
 
           <main className="p-4">
             <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+
               <Route path="/login" element={<LoginPage setUser={setUser} />} />
 
               <Route path="/about" element={<AboutPage />} />
@@ -432,10 +440,12 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </main>
         </div>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
