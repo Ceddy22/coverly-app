@@ -105,6 +105,18 @@ class MessageCreate(BaseModel):
     body: str
 
 
+class ScheduleOverrideCreate(BaseModel):
+    username: str | None = None
+    teacher_name: str | None = None
+    period: str
+    date: str  # YYYY-MM-DD
+    new_category: str | None = None
+    new_subject: str | None = None
+    new_room: str | None = None
+    notes: str | None = None
+    created_by: str
+
+
 PROMPTS = {
     "attendance_summary": "Summarize today's attendance records for an administrator.",
     "parent_email": "Write a professional parent notification email.",
@@ -281,6 +293,23 @@ def create_tables():
             wednesday TEXT,
             thursday TEXT,
             friday TEXT
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS schedule_overrides (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_name TEXT NOT NULL,
+            period TEXT NOT NULL,
+            date TEXT NOT NULL,
+            new_category TEXT,
+            new_subject TEXT,
+            new_room TEXT,
+            notes TEXT,
+            created_by TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
@@ -844,12 +873,55 @@ def get_schedule(username: str):
     )
 
     rows = cursor.fetchall()
+
+    # fetch any overrides for today for this teacher
+    today_str = str(date.today())
+    cursor.execute(
+        """
+        SELECT *
+        FROM schedule_overrides
+        WHERE teacher_name = ?
+        AND date = ?
+        """,
+        (teacher_name, today_str),
+    )
+
+    overrides = cursor.fetchall()
     connection.close()
 
     schedule = []
 
+    # build a map of period -> override for today
+    override_map = {}
+    for o in overrides:
+        override_map[o["period"]] = dict(o)
+
     for row in rows:
-        schedule.append(dict(row))
+        item = dict(row)
+
+        # apply override if present for this period
+        ov = override_map.get(item.get("period"))
+        if ov:
+            # set category/subject/room to override values if provided
+            if ov.get("new_category"):
+                item["category"] = ov.get("new_category")
+            if ov.get("new_subject"):
+                item["subject"] = ov.get("new_subject")
+            if ov.get("new_room"):
+                item["room"] = ov.get("new_room")
+
+            # attach override meta so frontend can show notes
+            item["override_notes"] = ov.get("notes")
+            item["override_created_by"] = ov.get("created_by")
+            item["override_date"] = ov.get("date")
+
+            # also replace the weekday cell corresponding to today's weekday
+            weekday = date.fromisoformat(ov.get("date")).strftime("%A").lower()
+            if weekday in ["monday", "tuesday", "wednesday", "thursday", "friday"]:
+                # prefer new_subject for the day's cell
+                item[weekday] = ov.get("new_subject") or "Meeting"
+
+        schedule.append(item)
 
     return {
         "teacher_name": teacher_name,
@@ -1047,6 +1119,82 @@ async def upload_schedule_csv(file: UploadFile = File(...)):
     finally:
         if connection:
             connection.close()
+
+
+@app.post("/api/admin/schedule/override")
+def create_schedule_override(override: ScheduleOverrideCreate):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # resolve teacher_name if username provided
+    teacher_name = override.teacher_name
+    if not teacher_name and override.username:
+        cursor.execute(
+            """
+            SELECT name FROM users WHERE username = ?
+            """,
+            (override.username,),
+        )
+        user = cursor.fetchone()
+        if user is None:
+            connection.close()
+            raise HTTPException(status_code=404, detail="User not found")
+
+        teacher_name = user["name"]
+
+    if not teacher_name:
+        connection.close()
+        raise HTTPException(status_code=400, detail="teacher_name or username is required")
+
+    # insert override
+    cursor.execute(
+        """
+        INSERT INTO schedule_overrides (
+            teacher_name,
+            period,
+            date,
+            new_category,
+            new_subject,
+            new_room,
+            notes,
+            created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            teacher_name,
+            override.period,
+            override.date,
+            override.new_category,
+            override.new_subject,
+            override.new_room,
+            override.notes,
+            override.created_by,
+        ),
+    )
+
+    # notify the user if possible
+    cursor.execute(
+        """
+        SELECT username, staff_id FROM users WHERE name = ?
+        """,
+        (teacher_name,),
+    )
+
+    user_row = cursor.fetchone()
+    if user_row:
+        create_notification_with_cursor(
+            cursor,
+            recipient_username=user_row["username"],
+            recipient_staff_id=user_row["staff_id"],
+            title="Schedule Override",
+            message=f"A temporary schedule change was made for {override.date}: {override.new_subject or 'Meeting'} (Period {override.period}). Reason: {override.notes or 'None'}",
+            notification_type="schedule",
+        )
+
+    connection.commit()
+    connection.close()
+
+    return {"message": "Schedule override created"}
 
 
 @app.post("/api/users")
