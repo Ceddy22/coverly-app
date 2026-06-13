@@ -59,7 +59,20 @@ export default function Dashboard() {
     const category = item.category?.toLowerCase() || "";
     const subject = item.subject?.toLowerCase() || "";
 
-    return category.includes("prep") || subject.includes("prep");
+    // Also check each weekday cell in case the CSV marks 'Prep' there
+    const dayFields = [
+      item.monday,
+      item.tuesday,
+      item.wednesday,
+      item.thursday,
+      item.friday,
+    ];
+
+    const dayContainsPrep = dayFields.some((d) => {
+      return (d || "").toString().toLowerCase().includes("prep");
+    });
+
+    return category.includes("prep") || subject.includes("prep") || dayContainsPrep;
   };
 
   return (
@@ -138,16 +151,19 @@ export default function Dashboard() {
                     >
                       <div>
                         <p className="text-sm text-gray-500">Period</p>
-                        <p className="font-bold text-[#001B3D]">
-                          {prep ? "Prep" : item.period}
+                        <p className="font-bold text-[#001B3D] flex items-center gap-2">
+                          <span>{item.period || "—"}</span>
+                          {prep && (
+                            <span className="bg-[#F9C74F] text-[#001B3D] text-xs font-semibold px-2 py-1 rounded">
+                              Prep
+                            </span>
+                          )}
                         </p>
                       </div>
 
                       <div>
                         <p className="text-sm text-gray-500">Time</p>
-                        <p className="font-semibold">
-                          {prep ? "Prep" : item.time}
-                        </p>
+                        <p className="font-semibold">{item.time || "—"}</p>
                       </div>
                     </div>
                   );
