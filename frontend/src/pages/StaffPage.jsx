@@ -45,16 +45,19 @@ export default function StaffPage() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const API_HOST_URL = import.meta.env.VITE_API_HOST_URL;
-  const DEFAULT_API_BASE = "http://localhost:8000";
 
   const buildApiPath = (path) => {
-    const base = API_BASE_URL && API_BASE_URL.length > 0 ? API_BASE_URL : DEFAULT_API_BASE;
-    return base.endsWith("/") ? `${base.replace(/\/$/, "")}${path}` : `${base}${path}`;
+    if (API_BASE_URL && API_BASE_URL.length > 0) {
+      return API_BASE_URL.endsWith("/") ? `${API_BASE_URL.replace(/\/$/, "")}${path}` : `${API_BASE_URL}${path}`;
+    }
+    return path;
   };
 
   const buildHostPath = (path) => {
-    const host = API_HOST_URL && API_HOST_URL.length > 0 ? API_HOST_URL : DEFAULT_API_BASE;
-    return host.endsWith("/") ? `${host.replace(/\/$/, "")}${path}` : `${host}${path}`;
+    if (API_HOST_URL && API_HOST_URL.length > 0) {
+      return API_HOST_URL.endsWith("/") ? `${API_HOST_URL.replace(/\/$/, "")}${path}` : `${API_HOST_URL}${path}`;
+    }
+    return path;
   };
 
   const fetchStaffUsersAndAttendance = async () => {
