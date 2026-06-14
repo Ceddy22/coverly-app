@@ -42,7 +42,12 @@ export default function SchedulePage() {
   const isPrepPeriod = (item) => {
     const category = item.category?.toLowerCase() || "";
     const subject = item.subject?.toLowerCase() || "";
-    return category.includes("prep") || subject.includes("prep");
+
+    // Also check weekday cells for 'prep' (CSV may mark Prep on specific days)
+    const dayFields = [item.monday, item.tuesday, item.wednesday, item.thursday, item.friday];
+    const dayContainsPrep = dayFields.some((d) => (d || "").toString().toLowerCase().includes("prep"));
+
+    return category.includes("prep") || subject.includes("prep") || dayContainsPrep;
   };
 
   return (
@@ -107,21 +112,34 @@ export default function SchedulePage() {
                   </thead>
                   <tbody>
                     {schedule.map((item, index) => (
-                      <tr
-                        key={item.id || index}
-                        className={isPrepPeriod(item) ? "bg-[#EAF6FF]" : ""}
-                      >
-                        <td className="border p-3 font-semibold">{item.period || "—"}</td>
-                        <td className="border p-3">{item.time || "—"}</td>
-                        <td className="border p-3">{item.category || "—"}</td>
-                        <td className="border p-3">{item.subject || "—"}</td>
-                        <td className="border p-3">{item.room || "—"}</td>
-                        <td className="border p-3">{item.monday || "—"}</td>
-                        <td className="border p-3">{item.tuesday || "—"}</td>
-                        <td className="border p-3">{item.wednesday || "—"}</td>
-                        <td className="border p-3">{item.thursday || "—"}</td>
-                        <td className="border p-3">{item.friday || "—"}</td>
-                      </tr>
+                      <>
+                        <tr
+                          key={item.id || index}
+                          className={isPrepPeriod(item) ? "bg-[#EAF6FF]" : ""}
+                        >
+                          <td className="border p-3 font-semibold">{item.period || "—"}</td>
+                          <td className="border p-3">{item.time || "—"}</td>
+                          <td className="border p-3">{item.category || "—"}</td>
+                          <td className="border p-3">{item.subject || "—"}</td>
+                          <td className="border p-3">{item.room || "—"}</td>
+                          <td className="border p-3">{item.monday || "—"}</td>
+                          <td className="border p-3">{item.tuesday || "—"}</td>
+                          <td className="border p-3">{item.wednesday || "—"}</td>
+                          <td className="border p-3">{item.thursday || "—"}</td>
+                          <td className="border p-3">{item.friday || "—"}</td>
+                        </tr>
+
+                        {item.override_notes && (
+                          <tr key={`note-${item.id || index}`}>
+                            <td colSpan={10} className="bg-[#FFF8E6] text-sm text-gray-700 p-2 border">
+                              <strong>Override:</strong> {item.override_notes}
+                              {item.override_created_by && (
+                                <span className="ml-2 text-xs text-gray-500">(Changed by: {item.override_created_by})</span>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>

@@ -29,17 +29,25 @@ CSV_FILE = "schedule.csv"
 ATTENDANCE_LOG_FILE = "attendance_changes.txt"
 
 app = FastAPI()
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:5174",
+    "coverly-app-kohl.vercel.app",
+]
+
+# Optionally allow extra origins via ALLOWED_ORIGINS env var (comma-separated)
+extra = os.getenv("ALLOWED_ORIGINS")
+if extra:
+    for o in [x.strip() for x in extra.split(",") if x.strip()]:
+        if o not in allowed_origins:
+            allowed_origins.append(o)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "https://thirsty-ether-dissuade.ngrok-free.dev",
-        "coverly-app-kohl.vercel.app",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

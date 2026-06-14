@@ -10,9 +10,8 @@ export default defineConfig({
     host: "0.0.0.0",
 
     allowedHosts: [
-      "thirsty-ether-dissuade.ngrok-free.dev",
-      ".ngrok-free.dev",
-      ".ngrok-free.app",
+      "localhost",
+      "127.0.0.1",
     ],
 
     proxy: {

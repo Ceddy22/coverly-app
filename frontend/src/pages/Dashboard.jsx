@@ -143,28 +143,38 @@ export default function Dashboard() {
                   const prep = isPrepPeriod(item);
 
                   return (
-                    <div
-                      key={index}
-                      className={`grid grid-cols-1 md:grid-cols-2 gap-3 items-center border rounded-lg p-3 hover:bg-[#F6FAFD] ${
-                        prep ? "bg-[#EAF6FF] border-[#1F6FB2]" : ""
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm text-gray-500">Period</p>
-                        <p className="font-bold text-[#001B3D] flex items-center gap-2">
-                          <span>{item.period || "—"}</span>
-                          {prep && (
-                            <span className="bg-[#F9C74F] text-[#001B3D] text-xs font-semibold px-2 py-1 rounded">
-                              Prep
-                            </span>
-                          )}
-                        </p>
+                    <div key={index}>
+                      <div
+                        className={`grid grid-cols-1 md:grid-cols-2 gap-3 items-center border rounded-lg p-3 hover:bg-[#F6FAFD] ${
+                          prep ? "bg-[#EAF6FF] border-[#1F6FB2]" : ""
+                        }`}
+                      >
+                        <div>
+                          <p className="text-sm text-gray-500">Period</p>
+                          <p className="font-bold text-[#001B3D] flex items-center gap-2">
+                            <span>{item.period || "—"}</span>
+                            {prep && (
+                              <span className="bg-[#F9C74F] text-[#001B3D] text-xs font-semibold px-2 py-1 rounded">
+                                Prep
+                              </span>
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-sm text-gray-500">Time</p>
+                          <p className="font-semibold">{item.time || "—"}</p>
+                        </div>
                       </div>
 
-                      <div>
-                        <p className="text-sm text-gray-500">Time</p>
-                        <p className="font-semibold">{item.time || "—"}</p>
-                      </div>
+                      {item.override_notes && (
+                        <div className="text-sm text-gray-700 bg-[#FFF8E6] p-2 rounded mt-2 border">
+                          <p className="font-semibold">Note: {item.override_notes}</p>
+                          {item.override_created_by && (
+                            <p className="text-xs text-gray-500">Changed by: {item.override_created_by}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

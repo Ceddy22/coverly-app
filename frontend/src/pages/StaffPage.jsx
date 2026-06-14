@@ -10,6 +10,7 @@ export default function StaffPage() {
   const [showUserFormForStaffId, setShowUserFormForStaffId] = useState(null);
   const [showOverrideFormForStaffId, setShowOverrideFormForStaffId] =
     useState(null);
+  const [showMeetingFormForStaffId, setShowMeetingFormForStaffId] = useState(null);
 
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -33,8 +34,28 @@ export default function StaffPage() {
     overridden_by: "admin1",
   });
 
+  const [meetingData, setMeetingData] = useState({
+    period: "",
+    date: new Date().toISOString().split("T")[0],
+    new_subject: "",
+    new_room: "",
+    notes: "",
+    created_by: "admin1",
+  });
+
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const API_HOST_URL = import.meta.env.VITE_API_HOST_URL;
+  const DEFAULT_API_BASE = "http://localhost:8000";
+
+  const buildApiPath = (path) => {
+    const base = API_BASE_URL && API_BASE_URL.length > 0 ? API_BASE_URL : DEFAULT_API_BASE;
+    return base.endsWith("/") ? `${base.replace(/\/$/, "")}${path}` : `${base}${path}`;
+  };
+
+  const buildHostPath = (path) => {
+    const host = API_HOST_URL && API_HOST_URL.length > 0 ? API_HOST_URL : DEFAULT_API_BASE;
+    return host.endsWith("/") ? `${host.replace(/\/$/, "")}${path}` : `${host}${path}`;
+  };
 
   const fetchStaffUsersAndAttendance = async () => {
     try {
@@ -133,6 +154,15 @@ export default function StaffPage() {
     }));
   };
 
+  const handleMeetingChange = (event) => {
+    const { name, value } = event.target;
+
+    setMeetingData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleSubmitNewStaff = async (event) => {
     event.preventDefault();
 
@@ -140,7 +170,7 @@ export default function StaffPage() {
       setError("");
       setSuccessMessage("");
 
-      const response = await fetch(`${API_BASE_URL}/api/staff`, {
+      const response = await fetch(buildApiPath(`/api/staff`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +224,7 @@ export default function StaffPage() {
       setError("");
       setSuccessMessage("");
 
-      const response = await fetch(`${API_HOST_URL}/api/users`, {
+      const response = await fetch(buildHostPath(`/api/users`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -252,7 +282,7 @@ export default function StaffPage() {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/admin/attendance`,
+        buildApiPath(`/api/admin/attendance`),
         {
           method: "POST",
           headers: {
@@ -295,7 +325,7 @@ export default function StaffPage() {
       setSuccessMessage("");
 
       const response = await fetch(
-        `${API_BASE_URL}/api/admin/attendance/${overrideData.attendance_id}`,
+        buildApiPath(`/api/admin/attendance/${overrideData.attendance_id}`),
         {
           method: "PUT",
           headers: {
@@ -333,7 +363,68 @@ export default function StaffPage() {
   };
 
   const handleSubmitMeeting = (staff) => {
-    console.log("Submit Meeting for:", staff.name);
+    setShowMeetingFormForStaffId(staff.id);
+    const adminUser = JSON.parse(localStorage.getItem("user"));
+
+    setMeetingData({
+      period: "",
+      date: getTodayDate(),
+      new_subject: "",
+      new_room: "",
+      notes: "",
+      created_by: adminUser?.username || "admin1",
+    });
+    setError("");
+    setSuccessMessage("");
+  };
+
+  const handleSubmitMeetingForm = async (event, staff) => {
+    event.preventDefault();
+
+    try {
+      setError("");
+      setSuccessMessage("");
+
+      const payload = {
+        period: meetingData.period,
+        date: meetingData.date,
+        new_category: meetingData.new_subject ? "Meeting" : "Meeting",
+        new_subject: meetingData.new_subject,
+        new_room: meetingData.new_room,
+        notes: meetingData.notes,
+        created_by: meetingData.created_by,
+      };
+
+      // prefer sending username if user exists
+      const userAccount = getUserForStaff(staff);
+      if (userAccount) payload.username = userAccount.username;
+      else payload.teacher_name = staff.name;
+
+      const response = await fetch(buildApiPath(`/api/admin/schedule/override`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Failed to submit meeting override");
+
+      setSuccessMessage(`Meeting override saved for ${staff.name}.`);
+      setShowMeetingFormForStaffId(null);
+      setMeetingData({
+        period: "",
+        date: getTodayDate(),
+        new_subject: "",
+        new_room: "",
+        notes: "",
+        created_by: meetingData.created_by,
+      });
+
+      await fetchStaffUsersAndAttendance();
+    } catch (err) {
+      console.error("Submit meeting error:", err);
+      setError(err.message || "Failed to submit meeting");
+    }
   };
 
   const handleGiveBackPrepTime = (staff) => {
@@ -512,6 +603,80 @@ export default function StaffPage() {
                     </button>
                   )}
                 </div>
+
+                {showMeetingFormForStaffId === staff.id && (
+                  <form
+                    onSubmit={(event) => handleSubmitMeetingForm(event, staff)}
+                    className="mt-4 border-t pt-4"
+                  >
+                    <h3 className="font-bold mb-3">Submit Meeting for {staff.name}</h3>
+
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        name="period"
+                        value={meetingData.period}
+                        onChange={handleMeetingChange}
+                        className="border rounded px-3 py-2 w-full"
+                        placeholder="Period (e.g., 3)"
+                        required
+                      />
+
+                      <input
+                        type="date"
+                        name="date"
+                        value={meetingData.date}
+                        onChange={handleMeetingChange}
+                        className="border rounded px-3 py-2 w-full"
+                        required
+                      />
+
+                      <input
+                        type="text"
+                        name="new_subject"
+                        value={meetingData.new_subject}
+                        onChange={handleMeetingChange}
+                        className="border rounded px-3 py-2 w-full"
+                        placeholder="Meeting subject (optional)"
+                      />
+
+                      <input
+                        type="text"
+                        name="new_room"
+                        value={meetingData.new_room}
+                        onChange={handleMeetingChange}
+                        className="border rounded px-3 py-2 w-full"
+                        placeholder="Room (optional)"
+                      />
+
+                      <textarea
+                        name="notes"
+                        value={meetingData.notes}
+                        onChange={handleMeetingChange}
+                        className="border rounded px-3 py-2 w-full"
+                        placeholder="Notes / reason"
+                        rows="3"
+                      />
+
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                        >
+                          Save Meeting
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowMeetingFormForStaffId(null)}
+                          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
 
                 {showOverrideFormForStaffId === staff.id && (
                   <form
