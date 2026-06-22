@@ -8,6 +8,7 @@ export default function AdminSchedulePage() {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [activeFilter, setActiveFilter] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -126,11 +127,37 @@ export default function AdminSchedulePage() {
   };
 
   const handlePrepTime = () => {
-    console.log("Prep Time clicked");
+    setActiveFilter(activeFilter === "prep" ? null : "prep");
   };
 
   const handleAttendance = () => {
-    console.log("Attendance clicked");
+    setActiveFilter(activeFilter === "attendance" ? null : "attendance");
+  };
+
+  const getFilteredSchedule = () => {
+    if (!activeFilter) return schedule;
+
+    if (activeFilter === "prep") {
+      return schedule.filter((item) => {
+        const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+        return days.some((day) => {
+          const dayValue = item[day];
+          return dayValue && dayValue.toLowerCase().includes("prep");
+        });
+      });
+    }
+
+    if (activeFilter === "attendance") {
+      return schedule.filter((item) => {
+        const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+        return days.some((day) => {
+          const dayValue = item[day];
+          return dayValue && dayValue.toLowerCase().includes("absent");
+        });
+      });
+    }
+
+    return schedule;
   };
 
   return (
@@ -156,14 +183,22 @@ export default function AdminSchedulePage() {
 
         <button
           onClick={handlePrepTime}
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          className={`px-4 py-2 rounded transition-colors ${
+            activeFilter === "prep"
+              ? "bg-purple-800 text-white"
+              : "bg-purple-600 text-white hover:bg-purple-700"
+          }`}
         >
           Prep Time
         </button>
 
         <button
           onClick={handleAttendance}
-          className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+          className={`px-4 py-2 rounded transition-colors ${
+            activeFilter === "attendance"
+              ? "bg-orange-800 text-white"
+              : "bg-orange-600 text-white hover:bg-orange-700"
+          }`}
         >
           Attendance
         </button>
@@ -195,7 +230,10 @@ export default function AdminSchedulePage() {
           </button>
 
           <button
-            onClick={fetchAllSchedules}
+            onClick={() => {
+              fetchAllSchedules();
+              setActiveFilter(null);
+            }}
             className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
           >
             Show All
@@ -211,10 +249,16 @@ export default function AdminSchedulePage() {
         <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-xl font-bold mb-4">
             Schedule for {teacherName}
+            {activeFilter === "prep" && " - Prep Time"}
+            {activeFilter === "attendance" && " - Absent Teachers"}
           </h2>
 
-          {schedule.length === 0 ? (
-            <p className="text-gray-600">No schedule found.</p>
+          {getFilteredSchedule().length === 0 ? (
+            <p className="text-gray-600">
+              {activeFilter
+                ? `No ${activeFilter === "prep" ? "prep time" : "absent teacher"} schedule found.`
+                : "No schedule found."}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border border-gray-300 text-sm">
@@ -235,7 +279,7 @@ export default function AdminSchedulePage() {
                 </thead>
 
                 <tbody>
-                  {schedule.map((item, index) => (
+                  {getFilteredSchedule().map((item, index) => (
                     <tr key={item.id || index}>
                       <td className="border p-2 font-semibold">
                         {item.teacher_name}
